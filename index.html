@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#075f4b">
+  <title>Quét CCCD & GPLX</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header><b>HỒ SƠ SỐ</b><span id="draftStatus">Chưa có hồ sơ tạm</span></header>
+  <main>
+    <section class="steps">
+      <button id="scanCccd" class="step active"><i>1</i><span><b>Quét CCCD</b><small id="cccdState">Chưa quét</small></span></button>
+      <button id="scanGplx" class="step"><i>2</i><span><b>Quét GPLX</b><small id="gplxState">Chưa quét</small></span></button>
+      <button id="review" class="step"><i>3</i><span><b>Kiểm tra</b><small>Chỉ lưu khi xác nhận</small></span></button>
+    </section>
+
+    <section id="cameraPanel" class="card camera-panel hidden">
+      <div class="card-title"><div><small>CAMERA SAU</small><h2 id="cameraTitle">Quét QR CCCD</h2></div><button id="closeCamera" class="icon">×</button></div>
+      <div class="camera-box"><video id="camera" playsinline muted></video><div class="target"></div><div class="scan-line"></div></div>
+      <p>Đưa mã QR vào giữa khung. Ảnh chỉ xử lý trên điện thoại.</p>
+      <label class="secondary">Chọn ảnh có mã QR<input id="imageInput" type="file" accept="image/*" capture="environment" hidden></label>
+    </section>
+
+    <section id="reviewPanel" class="card">
+      <div class="card-title"><div><small>HỒ SƠ ĐANG GIỮ TẠM</small><h1>Kiểm tra đầy đủ trước khi lưu</h1></div><span class="badge">Chưa gửi</span></div>
+      <form id="recordForm">
+        <fieldset><legend>Thông tin CCCD</legend><div class="grid">
+          <label>Họ và tên<input name="HoVaTen"></label>
+          <label>Ngày sinh<input name="NgaySinh" placeholder="dd/MM/yyyy"></label>
+          <label>Giới tính<input name="GioiTinh"></label>
+          <label>Số CCCD<input name="SoCMT" inputmode="numeric"></label>
+          <label>Ngày cấp CCCD<input name="NgayCapCMT" placeholder="dd/MM/yyyy"></label>
+          <label>Nơi cấp CCCD<input name="NoiCapCMT"></label>
+          <label>Mã ĐVHC thường trú<input name="MaDVHC_TT"></label>
+          <label>Chi tiết thường trú<input name="ChiTiet_TT"></label>
+          <label>Mã ĐVHC cư trú<input name="MaDVHC_CT"></label>
+          <label>Chi tiết cư trú<input name="ChiTiet_CT"></label>
+        </div></fieldset>
+        <fieldset><legend>Thông tin GPLX</legend><div class="grid">
+          <label>Số GPLX đã có<input name="SoGPLXDaCo"></label>
+          <label>Hạng GPLX đã có<input name="HangGPLXDaCo"></label>
+          <label>Ngày trúng tuyển<input name="NgayTTGPLXDaCo" placeholder="dd/MM/yyyy"></label>
+          <label>Ngày cấp GPLX<input name="NgayCapGPLXDaCo" placeholder="dd/MM/yyyy"></label>
+          <label>Đơn vị cấp GPLX<input name="DVCapGPLXDaCo"></label>
+          <label>Ghi chú<input name="GhiChu"></label>
+        </div></fieldset>
+      </form>
+      <div class="actions"><button id="clearDraft" class="danger">Xóa hồ sơ tạm</button><button id="saveSheet" class="primary" disabled>Xác nhận và lưu Google Sheets</button></div>
+      <p id="message"></p>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
