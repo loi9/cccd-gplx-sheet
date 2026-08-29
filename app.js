@@ -33,15 +33,24 @@ function parseGplx(raw){
   const candidates=p.map(onlyDigits).filter(x=>x.length>=10&&x.length<=12&&!/^\d{8}$/.test(x)&&x!==onlyDigits(draft.record.SoCMT));
   return{SoGPLXDaCo:candidates[0]||"",HangGPLXDaCo:hang.toUpperCase(),NgayTTGPLXDaCo:dates[0]||"",NgayCapGPLXDaCo:dates[1]||dates[0]||"",DVCapGPLXDaCo:""};
 }
-function finish(raw){try{Object.assign(draft.record,scanType==="cccd"?parseCccd(raw):parseGplx(raw));draft[scanType==="cccd"?"cccdScanned":"gplxScanned"]=true;saveDraft();closeCamera();show("Đã quét và lưu tạm "+scanType.toUpperCase(),"ok")}catch(e){show(e.message,"error")}}
+function finish(raw){try{navigator.vibrate?.(120);Object.assign(draft.record,scanType==="cccd"?parseCccd(raw):parseGplx(raw));draft[scanType==="cccd"?"cccdScanned":"gplxScanned"]=true;saveDraft();closeCamera();show("Đã quét và lưu tạm "+scanType.toUpperCase(),"ok")}catch(e){show(e.message,"error")}}
 async function openCamera(type){
   scanType=type;flashOn=false;$("#toggleFlash").textContent="Bật đèn";$("#cameraTitle").textContent="Quét QR "+type.toUpperCase();panel.classList.remove("hidden");document.body.style.overflow="hidden";
   scanner=new QrScanner(video,r=>finish(r.data),{
-    preferredCamera:"environment",maxScansPerSecond:25,returnDetailedScanResult:true,onDecodeError:()=>{},
-    calculateScanRegion:v=>({x:0,y:0,width:v.videoWidth,height:v.videoHeight,downScaledWidth:1100,downScaledHeight:Math.round(1100*v.videoHeight/v.videoWidth)})
+    preferredCamera:"environment",maxScansPerSecond:15,returnDetailedScanResult:true,onDecodeError:()=>{},
+    highlightScanRegion:true,highlightCodeOutline:true,
+    calculateScanRegion:v=>{
+      const size=Math.round(Math.min(v.videoWidth,v.videoHeight)*0.82);
+      return{x:Math.round((v.videoWidth-size)/2),y:Math.round((v.videoHeight-size)/2),width:size,height:size,downScaledWidth:600,downScaledHeight:600};
+    }
   });
   scanner.setInversionMode("both");
-  try{await scanner.start();const hasFlash=await scanner.hasFlash();$("#toggleFlash").style.display=hasFlash?"block":"none"}catch{show("Không mở được camera. Hãy cấp quyền hoặc chọn ảnh.","error");closeCamera()}
+  try{
+    await scanner.start();
+    const track=video.srcObject?.getVideoTracks?.()[0];
+    track?.applyConstraints?.({advanced:[{focusMode:"continuous"}]}).catch(()=>{});
+    const hasFlash=await scanner.hasFlash();$("#toggleFlash").style.display=hasFlash?"block":"none";
+  }catch{show("Không mở được camera. Hãy cấp quyền hoặc chọn ảnh.","error");closeCamera()}
 }
 function closeCamera(){scanner?.stop();scanner?.destroy();scanner=null;flashOn=false;panel.classList.add("hidden");document.body.style.overflow=""}
 function show(text,kind=""){$("#message").textContent=text;$("#message").className=kind}
