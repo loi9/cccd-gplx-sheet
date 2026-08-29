@@ -18,9 +18,9 @@
 
     <section id="cameraPanel" class="card camera-panel hidden">
       <div class="card-title"><div><small>CAMERA SAU</small><h2 id="cameraTitle">Quét QR CCCD</h2></div><button id="closeCamera" class="icon">×</button></div>
-      <div class="camera-box"><video id="camera" playsinline muted></video><div class="target"></div><div class="scan-line"></div></div>
-      <p>Đưa mã QR vào giữa khung. Ảnh chỉ xử lý trên điện thoại.</p>
-      <label class="secondary">Chọn ảnh có mã QR<input id="imageInput" type="file" accept="image/*" capture="environment" hidden></label>
+      <div class="camera-box"><video id="camera" playsinline muted></video><div class="target"><span>ĐẶT TOÀN BỘ MÃ QR VÀO KHUNG</span></div><div class="scan-line"></div></div>
+      <p>Giữ cách QR khoảng 15–25 cm và chờ camera lấy nét.</p>
+      <div class="camera-actions"><button id="toggleFlash" class="secondary" type="button">Bật đèn</button><label class="secondary">Chọn ảnh QR<input id="imageInput" type="file" accept="image/*" capture="environment" hidden></label></div>
     </section>
 
     <section id="reviewPanel" class="card">
