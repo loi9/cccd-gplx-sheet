@@ -13,6 +13,21 @@ const form=document.querySelector("#recordForm"),video=document.querySelector("#
 const $=s=>document.querySelector(s);
 const formatDate=v=>/^\d{8}$/.test(v)?`${v.slice(0,2)}/${v.slice(2,4)}/${v.slice(4)}`:v;
 const onlyDigits=v=>(v||"").replace(/\D/g,"");
+function toYmd(value){
+  const v=onlyDigits(value);if(!/^\d{8}$/.test(v))return"";
+  const currentYear=new Date().getFullYear();
+  const yyyy=Number(v.slice(0,4)),mmY=Number(v.slice(4,6)),ddY=Number(v.slice(6,8));
+  if(yyyy>=1900&&yyyy<=currentYear+20&&mmY>=1&&mmY<=12&&ddY>=1&&ddY<=31)return v;
+  const dd=Number(v.slice(0,2)),mm=Number(v.slice(2,4)),year=Number(v.slice(4));
+  return year>=1900&&year<=currentYear+20&&mm>=1&&mm<=12&&dd>=1&&dd<=31?`${v.slice(4)}${v.slice(2,4)}${v.slice(0,2)}`:"";
+}
+function birthDateKeys(){
+  const d=onlyDigits(draft.record.NgaySinh);if(d.length!==8)return new Set();
+  const keys=new Set([d]);
+  if(Number(d.slice(0,4))>=1900)keys.add(`${d.slice(6,8)}${d.slice(4,6)}${d.slice(0,4)}`);
+  else keys.add(`${d.slice(4)}${d.slice(2,4)}${d.slice(0,2)}`);
+  return keys;
+}
 function saveDraft(){localStorage.setItem("hoso-nhap",JSON.stringify(draft));render()}
 function render(){FIELDS.forEach(k=>form.elements[k].value=draft.record[k]||"");$("#cccdState").textContent=draft.cccdScanned?"Đã lưu tạm":"Chưa quét";$("#gplxState").textContent=draft.gplxScanned?"Đã lưu tạm":"Chưa quét";$("#draftStatus").textContent=draft.cccdScanned||draft.gplxScanned?"Đang giữ 1 hồ sơ tạm":"Chưa có hồ sơ tạm";$("#scanCccd").classList.toggle("done",draft.cccdScanned);$("#scanGplx").classList.toggle("done",draft.gplxScanned);$("#saveSheet").disabled=!(draft.cccdScanned&&draft.gplxScanned)}
 function normalizeAddressPart(value){
@@ -47,10 +62,11 @@ async function parseCccd(raw){
 }
 function parseGplx(raw){
   const p=raw.split(/[|;]/).map(x=>x.trim()).filter(Boolean);
-  const dates=p.map(onlyDigits).filter(x=>/^\d{8}$/.test(x));
+  const birthdays=birthDateKeys();
+  const issueDates=p.map(onlyDigits).filter(x=>/^\d{8}$/.test(x)&&!birthdays.has(x)).map(toYmd).filter(Boolean);
   const hangs=[...raw.matchAll(/(?:^|[|;,\s])(A1|A2|A3|A4|B1|B2|B|C1|C|D1|D2|D|BE|CE|DE|FB2|FC|FD|FE)(?=$|[|;,\s])/gi)].map(x=>x[1].toUpperCase());
   const candidates=p.map(onlyDigits).filter(x=>x.length>=10&&x.length<=12&&!/^\d{8}$/.test(x)&&x!==onlyDigits(draft.record.SoCMT));
-  return{SoGPLXDaCo:candidates.join("|"),HangGPLXDaCo:hangs.join("|"),NgayTTGPLXDaCo:dates[0]||"",NgayCapGPLXDaCo:dates[1]||dates[0]||"",DVCapGPLXDaCo:""};
+  return{SoGPLXDaCo:candidates.join("|"),HangGPLXDaCo:hangs.join("|"),NgayTTGPLXDaCo:"",NgayCapGPLXDaCo:issueDates[0]||"",DVCapGPLXDaCo:""};
 }
 function appendPipe(oldValue,newValue){return newValue?(oldValue?oldValue+"|"+newValue:newValue):oldValue}
 async function finish(raw){
@@ -140,3 +156,17 @@ form.oninput=e=>{if(e.target.name){draft.record[e.target.name]=e.target.value;sa
 $("#clearDraft").onclick=()=>{if(confirm("Xóa toàn bộ hồ sơ đang giữ tạm?")){draft={record:emptyRecord(),cccdScanned:false,gplxScanned:false};localStorage.removeItem("hoso-nhap");render()}};
 $("#saveSheet").onclick=async()=>{if(!GOOGLE_SCRIPT_URL)return show("Chưa cấu hình GOOGLE_SCRIPT_URL trong config.js.","error");$("#saveSheet").disabled=true;show("Đang ghi Google Sheets...");const payload={...draft.record,ClientRecordId:crypto.randomUUID(),CreatedAt:new Date().toISOString()};try{await fetch(GOOGLE_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});localStorage.removeItem("hoso-nhap");draft={record:emptyRecord(),cccdScanned:false,gplxScanned:false};render();show("Đã gửi bản ghi. Kiểm tra Google Sheets để xác nhận.","ok")}catch{show("Không gửi được. Hồ sơ tạm vẫn được giữ lại.","error");$("#saveSheet").disabled=false}};
 render();
+
+function installAddressTester(){
+  if($("#addressTester"))return;
+  const box=document.createElement("section");box.id="addressTester";
+  box.style.cssText="margin:18px 0;padding:16px;border:1px solid #cbd5e1;border-radius:14px;background:#f8fafc";
+  box.innerHTML=`<h3 style="margin:0 0 8px">Thử tách địa chỉ (không lưu)</h3><p style="margin:0 0 10px;color:#475569">Dán nguyên địa chỉ CCCD để kiểm tra trước khi quét thật.</p><textarea id="addressTestInput" rows="3" placeholder="Ví dụ: 123 đường A, khu phố 2, phường..., thành phố..., tỉnh..." style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #94a3b8;border-radius:8px"></textarea><button type="button" id="runAddressTest" style="margin-top:10px">Kiểm tra tách địa chỉ</button><pre id="addressTestResult" style="white-space:pre-wrap;margin:10px 0 0"></pre>`;
+  form.parentElement.appendChild(box);
+  $("#runAddressTest").onclick=async()=>{
+    const value=$("#addressTestInput").value.trim();if(!value)return;
+    addressWarning="";const result=await resolveAddress(value);
+    $("#addressTestResult").textContent=`ChiTiet_TT / ChiTiet_CT: ${result.detail||"(trống)"}\nMaDVHC_TT / MaDVHC_CT: ${result.code||"(chưa xác định)"}${addressWarning?`\nCảnh báo: ${addressWarning}`:""}`;
+  };
+}
+installAddressTester();
