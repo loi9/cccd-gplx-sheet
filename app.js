@@ -55,6 +55,10 @@ async function parseCccd(raw){
 }
 function parseGplx(raw){
   const p=raw.split(/[|;]/).map(x=>x.trim()).filter(Boolean);
+  if(raw.includes(";")&&p.length>=6&&/^\d{10,12}$/.test(onlyDigits(p[0]))&&/^\d{8}$/.test(onlyDigits(p[2]))){
+    const hangs=[...new Set([...p[3].matchAll(/(?:^|[^A-Z0-9])(A1|A2|A3|A4|B1|B2|B|C1|C|D1|D2|D|BE|CE|DE|FB2|FC|FD|FE)(?=$|[^A-Z0-9])/gi)].map(x=>x[1].toUpperCase()))];
+    return{SoGPLXDaCo:onlyDigits(p[0]),HangGPLXDaCo:hangs.join("|"),NgayTTGPLXDaCo:"",NgayCapGPLXDaCo:toYmd(p[4]),DVCapGPLXDaCo:p[6]||""};
+  }
   const birthYmd=toYmd(draft.record.NgaySinh);
   const issueDates=p.map(onlyDigits).filter(x=>/^\d{8}$/.test(x)).map(toYmd).filter(x=>x&&x!==birthYmd);
   const hangs=[...new Set([...raw.matchAll(/(?:^|[^A-Z0-9])(A1|A2|A3|A4|B1|B2|B|C1|C|D1|D2|D|BE|CE|DE|FB2|FC|FD|FE)(?=$|[^A-Z0-9])/gi)].map(x=>x[1].toUpperCase()))];
