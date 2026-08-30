@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#075f4b">
   <title>Quét CCCD & GPLX</title>
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=11">
 </head>
 <body>
   <header><b>HỒ SƠ SỐ</b><span id="draftStatus">Chưa có hồ sơ tạm</span></header>
@@ -19,8 +19,9 @@
     <section id="cameraPanel" class="card camera-panel hidden">
       <div class="card-title"><div><small>CAMERA SAU</small><h2 id="cameraTitle">Quét QR CCCD</h2></div><button id="closeCamera" class="icon">×</button></div>
       <div class="camera-box"><video id="camera" playsinline muted></video><div class="target"><span>ĐẶT TOÀN BỘ MÃ QR VÀO KHUNG</span></div><div class="scan-line"></div></div>
-      <p>Giữ cách QR khoảng 15–25 cm và chờ camera lấy nét.</p>
-      <div class="camera-actions"><button id="toggleFlash" class="secondary" type="button">Bật đèn</button><label class="secondary">Chọn ảnh QR<input id="imageInput" type="file" accept="image/*" capture="environment" hidden></label></div>
+      <p id="cameraHint">Giữ cách QR khoảng 15–25 cm và chờ camera lấy nét.</p>
+      <div id="qrCameraActions" class="camera-actions"><button id="toggleFlash" class="secondary" type="button">Bật đèn</button><label class="secondary">Chọn ảnh QR<input id="imageInput" type="file" accept="image/*" capture="environment" hidden></label></div>
+      <div id="photoCameraActions" class="camera-actions one hidden"><button id="capturePhoto" class="capture" type="button">Chụp ảnh</button></div>
     </section>
 
     <section id="reviewPanel" class="card">
@@ -33,10 +34,16 @@
           <label>Số CCCD<input name="SoCMT" inputmode="numeric"></label>
           <label>Ngày cấp CCCD<input name="NgayCapCMT" placeholder="dd/MM/yyyy"></label>
           <label>Nơi cấp CCCD<input name="NoiCapCMT"></label>
+          <p id="addressConversion" class="address-conversion">ĐVHC cũ: chưa quét → ĐVHC mới: chưa xác định</p>
           <label>Mã ĐVHC thường trú<input name="MaDVHC_TT"></label>
           <label>Chi tiết thường trú<input name="ChiTiet_TT"></label>
           <label>Mã ĐVHC cư trú<input name="MaDVHC_CT"></label>
           <label>Chi tiết cư trú<input name="ChiTiet_CT"></label>
+        </div></fieldset>
+        <fieldset><legend>Khóa học</legend><div class="grid">
+          <label>Hạng học<select id="hangHoc"><option value="">-- Chọn hạng --</option><option>A</option><option>A1</option><option>B</option><option>C1</option><option>C</option><option>D1</option><option>D2</option><option>D</option><option>BE</option><option>CE</option><option>DE</option></select></label>
+          <label>Khóa<input id="khoaHoc" placeholder="Ví dụ: K42"></label>
+          <label class="full">Mã khóa học<input name="MaKhoaHoc" readonly placeholder="Tự ghép, ví dụ B-K42"></label>
         </div></fieldset>
         <fieldset><legend>Thông tin GPLX</legend><div class="grid">
           <label>Số GPLX đã có<input name="SoGPLXDaCo"></label>
@@ -46,11 +53,20 @@
           <label>Đơn vị cấp GPLX<input name="DVCapGPLXDaCo"></label>
           <label>Ghi chú<input name="GhiChu"></label>
         </div></fieldset>
+        <fieldset><legend>Ảnh hồ sơ — không gửi lên Google Sheets</legend>
+          <p class="photo-help">Mỗi nút chụp mặt trước trước, sau đó tự chuyển sang mặt sau. Khi lưu sẽ tải một file ZIP về máy.</p>
+          <div class="photo-grid">
+            <button type="button" class="photo-button" data-photo-slot="cccd"><b>CCCD</b><small>Chụp mặt trước</small></button>
+            <button type="button" class="photo-button" data-photo-slot="gplx1"><b>GPLX 1</b><small>Chụp mặt trước</small></button>
+            <button type="button" class="photo-button" data-photo-slot="gplx2"><b>GPLX 2</b><small>Chụp mặt trước</small></button>
+            <button type="button" class="photo-button" data-photo-slot="gplx3"><b>GPLX 3</b><small>Chụp mặt trước</small></button>
+          </div>
+        </fieldset>
       </form>
       <div class="actions"><button id="clearDraft" class="danger">Xóa hồ sơ tạm</button><button id="saveSheet" class="primary" disabled>Xác nhận và lưu Google Sheets</button></div>
       <p id="message"></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=10"></script>
+  <script type="module" src="./app.js?v=11"></script>
 </body>
 </html>
