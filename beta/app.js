@@ -1,7 +1,7 @@
 import jsQR from "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/+esm";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
-import { GOOGLE_SCRIPT_URL } from "./config.js";
-import { SALES_LIST } from "./sales.js?v=13";
+import { GOOGLE_SCRIPT_URL } from "../config.js";
+import { SALES_LIST } from "../sales.js?v=13";
 
 const FIELDS=["HoVaTen","NgaySinh","GioiTinh","SoCMT","NgayCapCMT","NoiCapCMT","MaDVHC_TT","ChiTiet_TT","MaDVHC_CT","ChiTiet_CT","SoGPLXDaCo","HangGPLXDaCo","NgayTTGPLXDaCo","NgayCapGPLXDaCo","DVCapGPLXDaCo","GhiChu","MaKhoaHoc","DiaChiGoc","DiaChiMoi","Sales"];
 const emptyRecord=()=>Object.fromEntries(FIELDS.map(x=>[x,""]));
@@ -10,7 +10,7 @@ draft.record={...emptyRecord(),...(draft.record||{})};draft.course=draft.course|
 let scanType="cccd",cameraMode="qr",photoSlot="",photoSide="front",scanStream=null,scanLoopId=null,flashOn=false,scanLocked=false,nativeDetector=null,lastScanAt=0,scanFrameNo=0;
 try{if("BarcodeDetector" in window)nativeDetector=new BarcodeDetector({formats:["qr_code"]})}catch{}
 const scanCanvas=document.createElement("canvas"),scanCtx=scanCanvas.getContext("2d",{willReadFrequently:true});
-const dvhcPromise=fetch("./dvhc.json?v=11",{cache:"no-cache"}).then(r=>r.ok?r.json():[]).then(rows=>rows.map(x=>({...x,p:x.a.split("|")}))).catch(()=>[]);
+const dvhcPromise=fetch("../dvhc.json?v=11",{cache:"no-cache"}).then(r=>r.ok?r.json():[]).then(rows=>rows.map(x=>({...x,p:x.a.split("|")}))).catch(()=>[]);
 const DVQL_BY_ISSUER={"an giang":"91","ba ria - vung tau":"79","bac giang":"24","bac kan":"19","bac lieu":"96","bac ninh":"24","ben tre":"86","binh dinh":"52","binh duong":"79","binh phuoc":"75","binh thuan":"68","ca mau":"96","can tho":"92","cao bang":"04","da nang":"48","dak lak":"66","dak nong":"68","dien bien":"11","dong nai":"75","dong thap":"82","gia lai":"52","ha giang":"08","ha nam":"37","ha noi":"01","ha tinh":"42","hai duong":"31","hai phong":"31","hau giang":"92","ho chi minh":"79","hoa binh":"25","hue":"46","hung yen":"33","khanh hoa":"56","kien giang":"91","kon tum":"51","lai chau":"12","lam dong":"68","lang son":"20","lao cai":"15","long an":"80","nam dinh":"37","nghe an":"40","ninh binh":"37","ninh thuan":"56","phu tho":"25","phu yen":"66","quang binh":"44","quang nam":"48","quang ngai":"51","quang ninh":"22","quang tri":"44","soc trang":"92","son la":"14","tay ninh":"80","thai binh":"33","thai nguyen":"19","thanh hoa":"38","thua thien hue":"46","tien giang":"82","tra vinh":"86","tuyen quang":"08","vinh long":"86","vinh phuc":"25","yen bai":"15"};
 let addressWarning="";
 const form=document.querySelector("#recordForm"),video=document.querySelector("#camera"),panel=document.querySelector("#cameraPanel");
@@ -20,6 +20,9 @@ async function loadSalesList(){let names=SALES_LIST;try{if(GOOGLE_SCRIPT_URL){co
 loadSalesList();
 const formatDate=v=>/^\d{8}$/.test(v)?`${v.slice(0,2)}/${v.slice(2,4)}/${v.slice(4)}`:v;
 const onlyDigits=v=>(v||"").replace(/\D/g,"");
+const ZXING_OPTIONS={formats:["QRCode"],tryHarder:true,tryRotate:true,tryInvert:true,tryDownscale:true,tryDenoise:true,maxNumberOfSymbols:1};
+const zxingReaderPromise=import("https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.2/dist/es/reader/index.js").catch(()=>null);
+async function decodeWithZxing(image){try{const reader=await zxingReaderPromise;if(!reader)return null;return(await reader.readBarcodes(image,ZXING_OPTIONS)).find(x=>x.isValid&&x.text)||null}catch{return null}}
 function toYmd(value){
   const v=onlyDigits(value);if(!/^\d{8}$/.test(v))return"";
   const currentYear=new Date().getFullYear();
@@ -197,6 +200,7 @@ async function scanLoop(time=0){
       scanCtx.drawImage(video,sx,sy,sw,sh,0,0,scanCanvas.width,scanCanvas.height);
       const image=scanCtx.getImageData(0,0,scanCanvas.width,scanCanvas.height),result=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
       if(result?.data){const loc=result.location,s=1/scale;markQrDetected(result.data,[loc.topLeftCorner,loc.topRightCorner,loc.bottomRightCorner,loc.bottomLeftCorner].map(p=>({x:p.x*s+sx,y:p.y*s+sy})));return}
+      if(scanFrameNo%3===0){$("#cameraHint").textContent="Đang tăng cường nhận diện QR mờ/nghiêng...";const zxing=await decodeWithZxing(image);if(zxing){const s=1/scale,pos=zxing.position,points=pos?[pos.topLeft,pos.topRight,pos.bottomRight,pos.bottomLeft].map(p=>({x:p.x*s+sx,y:p.y*s+sy})):null;markQrDetected(zxing.text,points);return}}
     }
   }catch{}
   scanLoopId=requestAnimationFrame(scanLoop);
@@ -207,7 +211,7 @@ $("#scanCccd").onclick=()=>openCamera("cccd");$("#scanGplx").onclick=()=>openCam
 $("#capturePhoto").onclick=captureCurrentPhoto;document.querySelectorAll("[data-photo-slot]").forEach(button=>button.onclick=()=>openPhotoCamera(button.dataset.photoSlot));
 $("#downloadZipOnly").onclick=async()=>{try{show("Đang nén ảnh...");const downloaded=await downloadPhotoZip();show(downloaded?"Đã tải ZIP ảnh về máy.":"Chưa có ảnh để tải.",downloaded?"ok":"error")}catch(e){show(`Không tạo được ZIP ảnh: ${e.message||e}`,"error")}};
 $("#toggleFlash").onclick=async()=>{const track=scanStream?.getVideoTracks?.()[0];if(!track)return;try{flashOn=!flashOn;await track.applyConstraints({advanced:[{torch:flashOn}]});$("#toggleFlash").textContent=flashOn?"Tắt đèn":"Bật đèn"}catch{show("Điện thoại không hỗ trợ bật đèn từ trình duyệt.","error")}};
-$("#imageInput").onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const bitmap=await createImageBitmap(file);if(nativeDetector){const found=await nativeDetector.detect(bitmap).catch(()=>[]);if(found?.[0]?.rawValue){finish(found[0].rawValue);e.target.value="";return}}const max=2200,scale=Math.min(1,max/bitmap.width);scanCanvas.width=Math.round(bitmap.width*scale);scanCanvas.height=Math.round(bitmap.height*scale);scanCtx.drawImage(bitmap,0,0,scanCanvas.width,scanCanvas.height);let image=scanCtx.getImageData(0,0,scanCanvas.width,scanCanvas.height),r=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});if(!r?.data){for(let i=0;i<image.data.length;i+=4){const y=.299*image.data[i]+.587*image.data[i+1]+.114*image.data[i+2],v=y<145?0:255;image.data[i]=image.data[i+1]=image.data[i+2]=v}r=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"})}if(!r?.data)throw Error();finish(r.data)}catch{show("Không tìm thấy QR. Hãy chụp thẳng, đủ sáng và để QR chiếm ít nhất 1/3 ảnh.","error")}e.target.value=""};
+$("#imageInput").onchange=async e=>{const file=e.target.files[0];if(!file)return;try{show("BETA đang phân tích ảnh bằng nhiều bộ giải mã...");const bitmap=await createImageBitmap(file);if(nativeDetector){const found=await nativeDetector.detect(bitmap).catch(()=>[]);if(found?.[0]?.rawValue){finish(found[0].rawValue);e.target.value="";return}}const max=2400,scale=Math.min(1,max/bitmap.width);scanCanvas.width=Math.round(bitmap.width*scale);scanCanvas.height=Math.round(bitmap.height*scale);scanCtx.drawImage(bitmap,0,0,scanCanvas.width,scanCanvas.height);let image=scanCtx.getImageData(0,0,scanCanvas.width,scanCanvas.height),zxing=await decodeWithZxing(image);if(zxing?.text){finish(zxing.text);e.target.value="";return}let r=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});if(!r?.data){for(let i=0;i<image.data.length;i+=4){const y=.299*image.data[i]+.587*image.data[i+1]+.114*image.data[i+2],v=y<145?0:255;image.data[i]=image.data[i+1]=image.data[i+2]=v}zxing=await decodeWithZxing(image);if(zxing?.text){finish(zxing.text);e.target.value="";return}r=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"})}if(!r?.data)throw Error();finish(r.data)}catch{show("BETA không tìm thấy QR. Hãy đưa QR chiếm ít nhất 1/3 ảnh.","error")}e.target.value=""};
 form.oninput=e=>{if(e.target.name){draft.record[e.target.name]=e.target.value;saveDraft()}};
 function updateCourse(){draft.course={hang:$("#hangHoc").value.trim().toUpperCase(),khoa:$("#khoaHoc").value.trim().toUpperCase()};draft.record.MaKhoaHoc=[draft.course.hang,draft.course.khoa].filter(Boolean).join("-");saveDraft()}
 $("#hangHoc").onchange=updateCourse;$("#khoaHoc").oninput=updateCourse;
