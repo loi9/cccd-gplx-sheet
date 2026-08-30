@@ -9,6 +9,7 @@ let draft=JSON.parse(localStorage.getItem("hoso-nhap")||"null")||{record:emptyRe
 draft.record={...emptyRecord(),...(draft.record||{})};draft.course=draft.course||{hang:"",khoa:""};draft.photos=draft.photos||{};
 let scanType="cccd",cameraMode="qr",photoSlot="",photoSide="front",scanStream=null,scanLoopId=null,flashOn=false,scanLocked=false,nativeDetector=null,lastScanAt=0,scanFrameNo=0,cameraCaps={},zoomSteps=[],zoomIndex=0,zxingStatus="đang tải";
 let lastFinderEyes=[],finderStableFrames=0;
+let qrPreviewUrl="";
 try{if("BarcodeDetector" in window)nativeDetector=new BarcodeDetector({formats:["qr_code"]})}catch{}
 const scanCanvas=document.createElement("canvas"),scanCtx=scanCanvas.getContext("2d",{willReadFrequently:true}),finderCanvas=document.createElement("canvas"),finderCtx=finderCanvas.getContext("2d",{willReadFrequently:true});
 const dvhcPromise=fetch("../dvhc.json?v=11",{cache:"no-cache"}).then(r=>r.ok?r.json():[]).then(rows=>rows.map(x=>({...x,p:x.a.split("|")}))).catch(()=>[]);
@@ -39,6 +40,12 @@ function stabilizeFinderEyes(points){
   finderStableFrames=matched?finderStableFrames+1:1;lastFinderEyes=points.map(p=>({...p}));return finderStableFrames>=3
 }
 function resetFinderState(){lastFinderEyes=[];finderStableFrames=0;showFinderDots([],1)}
+function clearQrImagePreview(){if(qrPreviewUrl)URL.revokeObjectURL(qrPreviewUrl);qrPreviewUrl="";$("#qrImagePreview")?.classList.add("hidden");$("#qrImagePreview")?.removeAttribute("src");$("#qrImageOverlay")?.classList.add("hidden");const overlay=$("#qrImageOverlay");if(overlay)overlay.getContext("2d").clearRect(0,0,overlay.width,overlay.height);$("#imageProcessing")?.classList.add("hidden");video.classList.remove("hidden")}
+async function showQrImagePreview(file){clearQrImagePreview();scanLocked=true;qrPreviewUrl=URL.createObjectURL(file);const img=$("#qrImagePreview");img.src=qrPreviewUrl;await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("không hiển thị được ảnh vừa chọn"))});video.classList.add("hidden");img.classList.remove("hidden");$("#imageProcessing").classList.remove("hidden");$(".target").classList.add("hidden");$(".scan-line").classList.add("hidden");await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))}
+function drawPreviewEyes(points,imageScale,imageWidth,imageHeight){
+  const overlay=$("#qrImageOverlay"),box=overlay.parentElement.getBoundingClientRect(),dpr=devicePixelRatio||1;overlay.width=Math.round(box.width*dpr);overlay.height=Math.round(box.height*dpr);overlay.classList.remove("hidden");const ctx=overlay.getContext("2d");ctx.scale(dpr,dpr);ctx.clearRect(0,0,box.width,box.height);const fit=Math.min(box.width/imageWidth,box.height/imageHeight),ox=(box.width-imageWidth*fit)/2,oy=(box.height-imageHeight*fit)/2;
+  points.forEach((p,i)=>{const x=(p.x/imageScale)*fit+ox,y=(p.y/imageScale)*fit+oy;ctx.beginPath();ctx.arc(x,y,12,0,Math.PI*2);ctx.fillStyle="#ffd43b";ctx.shadowColor="#ffd43b";ctx.shadowBlur=12;ctx.fill();ctx.shadowBlur=0;ctx.lineWidth=3;ctx.strokeStyle="#111";ctx.stroke();ctx.fillStyle="#111";ctx.font="900 11px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(String(i+1),x,y)})
+}
 function toYmd(value){
   const v=onlyDigits(value);if(!/^\d{8}$/.test(v))return"";
   const currentYear=new Date().getFullYear();
@@ -184,8 +191,8 @@ function markQrDetected(raw,points){
   setTimeout(()=>finish(raw),650);
 }
 async function openCamera(type){
-  cameraMode="qr";scanType=type;flashOn=false;scanLocked=false;resetFinderState();
-  const target=document.querySelector(".target");target.classList.remove("photo-target");target.style.borderColor="";target.style.boxShadow="";target.querySelector("span").textContent="ĐẶT TOÀN BỘ MÃ QR VÀO KHUNG";$("#qrDetectedNotice")?.remove();
+  cameraMode="qr";scanType=type;flashOn=false;scanLocked=false;resetFinderState();clearQrImagePreview();
+  const target=document.querySelector(".target");target.classList.remove("photo-target","hidden");target.style.borderColor="";target.style.boxShadow="";target.querySelector("span").textContent="ĐẶT TOÀN BỘ MÃ QR VÀO KHUNG";$("#qrDetectedNotice")?.remove();
   $(".scan-line").classList.remove("photo-hidden");$("#qrCameraActions").classList.remove("hidden");$("#photoCameraActions").classList.add("hidden");$("#cameraHint").textContent="Giữ cách QR khoảng 15–25 cm và chờ camera lấy nét.";
   $("#toggleFlash").textContent="Bật đèn";$("#cameraTitle").textContent="Quét QR "+type.toUpperCase();panel.classList.remove("hidden");document.body.style.overflow="hidden";
   try{
@@ -220,7 +227,7 @@ async function scanLoop(time=0){
   }catch{}
   scanLoopId=requestAnimationFrame(scanLoop);
 }
-function closeCamera(){if(scanLoopId)cancelAnimationFrame(scanLoopId);scanLoopId=null;scanStream?.getTracks().forEach(t=>t.stop());scanStream=null;video.srcObject=null;$("#qrOutlineCanvas")?.remove();resetFinderState();flashOn=false;scanLocked=false;panel.classList.add("hidden");document.body.style.overflow=""}
+function closeCamera(){if(scanLoopId)cancelAnimationFrame(scanLoopId);scanLoopId=null;scanStream?.getTracks().forEach(t=>t.stop());scanStream=null;video.srcObject=null;$("#qrOutlineCanvas")?.remove();resetFinderState();clearQrImagePreview();$(".target").classList.remove("hidden");$(".scan-line").classList.remove("hidden");flashOn=false;scanLocked=false;panel.classList.add("hidden");document.body.style.overflow=""}
 function show(text,kind=""){$("#message").textContent=text;$("#message").className=kind}
 $("#scanCccd").onclick=()=>openCamera("cccd");$("#scanGplx").onclick=()=>openCamera("gplx");$("#review").onclick=()=>$("#reviewPanel").scrollIntoView({behavior:"smooth"});$("#closeCamera").onclick=closeCamera;
 $("#capturePhoto").onclick=captureCurrentPhoto;document.querySelectorAll("[data-photo-slot]").forEach(button=>button.onclick=()=>openPhotoCamera(button.dataset.photoSlot));
@@ -235,19 +242,20 @@ async function processSelectedQrImage(e){
   const input=e.target,file=input.files?.[0];if(!file)return;
   const setHint=text=>{$("#cameraHint").textContent=text;show(text)};
   try{
-    setHint("Đang xử lý ảnh bằng BarcodeDetector, ZXing và jsQR...");
+    await showQrImagePreview(file);setHint("Bước 1/3: Đã mở ảnh, đang tìm vị trí QR...");await new Promise(resolve=>requestAnimationFrame(resolve));
     const source=await loadImageSource(file),width=source.width||source.naturalWidth,height=source.height||source.naturalHeight;
     if(!width||!height)throw Error("không đọc được kích thước ảnh");
     if(nativeDetector){const found=await nativeDetector.detect(source).catch(()=>[]);if(found?.[0]?.rawValue){$("#cameraHint").textContent="Đã đọc được QR từ ảnh.";await finish(found[0].rawValue);return}}
+    setHint("Bước 2/3: Đang thử giải mã QR...");await new Promise(resolve=>requestAnimationFrame(resolve));
     const max=2400,scale=Math.min(1,max/width);scanCanvas.width=Math.round(width*scale);scanCanvas.height=Math.round(height*scale);scanCtx.drawImage(source,0,0,scanCanvas.width,scanCanvas.height);
     let image=scanCtx.getImageData(0,0,scanCanvas.width,scanCanvas.height),zxing=await decodeWithZxing(image);if(zxing?.text){$("#cameraHint").textContent="Đã đọc được QR từ ảnh.";await finish(zxing.text);return}
     let result=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
     if(!result?.data){const binary=new ImageData(new Uint8ClampedArray(image.data),image.width,image.height);for(let i=0;i<binary.data.length;i+=4){const y=.299*binary.data[i]+.587*binary.data[i+1]+.114*binary.data[i+2],v=y<145?0:255;binary.data[i]=binary.data[i+1]=binary.data[i+2]=v}zxing=await decodeWithZxing(binary);if(zxing?.text){$("#cameraHint").textContent="Đã đọc được QR từ ảnh.";await finish(zxing.text);return}result=jsQR(binary.data,binary.width,binary.height,{inversionAttempts:"attemptBoth"})}
     if(result?.data){$("#cameraHint").textContent="Đã đọc được QR từ ảnh.";await finish(result.data);return}
     const eyeScale=Math.min(1,720/scanCanvas.width);finderCanvas.width=Math.round(scanCanvas.width*eyeScale);finderCanvas.height=Math.round(scanCanvas.height*eyeScale);finderCtx.drawImage(scanCanvas,0,0,finderCanvas.width,finderCanvas.height);const eyes=findQrEyes(finderCtx.getImageData(0,0,finderCanvas.width,finderCanvas.height));
-    const message=eyes.length===3?"Đã thấy 3 mắt QR trong ảnh nhưng chưa giải mã được dữ liệu. Hãy chụp gần và rõ hơn.":"Không tìm thấy cấu trúc QR trong ảnh. Hãy chụp toàn bộ QR, đủ sáng và nét.";$("#cameraHint").textContent=message;show(message,"error");
+    $("#imageProcessing").classList.add("hidden");if(eyes.length===3)drawPreviewEyes(eyes,eyeScale,scanCanvas.width,scanCanvas.height);const message=eyes.length===3?"Bước 3/3: Đã thấy 3 mắt QR (đánh dấu trên ảnh) nhưng chưa giải mã được dữ liệu.":"Bước 3/3: Không tìm thấy đủ cấu trúc QR trong ảnh.";$("#cameraHint").textContent=message;show(message,"error");
     source.close?.();
-  }catch(error){const message=`Không xử lý được ảnh: ${error?.message||error}`;$("#cameraHint").textContent=message;show(message,"error")}finally{input.value=""}
+  }catch(error){$("#imageProcessing").classList.add("hidden");const message=`Không xử lý được ảnh: ${error?.message||error}`;$("#cameraHint").textContent=message;show(message,"error")}finally{input.value=""}
 }
 $("#imageInput").onchange=processSelectedQrImage;
 $("#cameraImageInput").onchange=processSelectedQrImage;
