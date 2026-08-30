@@ -8,6 +8,7 @@ let scanType="cccd",scanStream=null,scanLoopId=null,flashOn=false,scanLocked=fal
 try{if("BarcodeDetector" in window)nativeDetector=new BarcodeDetector({formats:["qr_code"]})}catch{}
 const scanCanvas=document.createElement("canvas"),scanCtx=scanCanvas.getContext("2d",{willReadFrequently:true});
 const dvhcPromise=fetch("./dvhc.json",{cache:"force-cache"}).then(r=>r.ok?r.json():[]).then(rows=>rows.map(x=>({...x,p:x.a.split("|")}))).catch(()=>[]);
+const DVQL_BY_ISSUER={"an giang":"91","ba ria - vung tau":"79","bac giang":"24","bac kan":"19","bac lieu":"96","bac ninh":"24","ben tre":"86","binh dinh":"52","binh duong":"79","binh phuoc":"75","binh thuan":"68","ca mau":"96","can tho":"92","cao bang":"04","da nang":"48","dak lak":"66","dak nong":"68","dien bien":"11","dong nai":"75","dong thap":"82","gia lai":"52","ha giang":"08","ha nam":"37","ha noi":"01","ha tinh":"42","hai duong":"31","hai phong":"31","hau giang":"92","ho chi minh":"79","hoa binh":"25","hue":"46","hung yen":"33","khanh hoa":"56","kien giang":"91","kon tum":"51","lai chau":"12","lam dong":"68","lang son":"20","lao cai":"15","long an":"80","nam dinh":"37","nghe an":"40","ninh binh":"37","ninh thuan":"56","phu tho":"25","phu yen":"66","quang binh":"44","quang nam":"48","quang ngai":"51","quang ninh":"22","quang tri":"44","soc trang":"92","son la":"14","tay ninh":"80","thai binh":"33","thai nguyen":"19","thanh hoa":"38","thua thien hue":"46","tien giang":"82","tra vinh":"86","tuyen quang":"08","vinh long":"86","vinh phuc":"25","yen bai":"15"};
 let addressWarning="";
 const form=document.querySelector("#recordForm"),video=document.querySelector("#camera"),panel=document.querySelector("#cameraPanel");
 const $=s=>document.querySelector(s);
@@ -22,7 +23,7 @@ function toYmd(value){
   return year>=1900&&year<=currentYear+20&&mm>=1&&mm<=12&&dd>=1&&dd<=31?`${v.slice(4)}${v.slice(2,4)}${v.slice(0,2)}`:"";
 }
 function saveDraft(){localStorage.setItem("hoso-nhap",JSON.stringify(draft));render()}
-function render(){FIELDS.forEach(k=>form.elements[k].value=draft.record[k]||"");$("#cccdState").textContent=draft.cccdScanned?"Đã lưu tạm":"Chưa quét";$("#gplxState").textContent=draft.gplxScanned?"Đã lưu tạm":"Chưa quét";$("#draftStatus").textContent=draft.cccdScanned||draft.gplxScanned?"Đang giữ 1 hồ sơ tạm":"Chưa có hồ sơ tạm";$("#scanCccd").classList.toggle("done",draft.cccdScanned);$("#scanGplx").classList.toggle("done",draft.gplxScanned);$("#saveSheet").disabled=!(draft.cccdScanned&&draft.gplxScanned)}
+function render(){FIELDS.forEach(k=>form.elements[k].value=draft.record[k]||"");$("#cccdState").textContent=draft.cccdScanned?"Đã lưu tạm":"Chưa quét";$("#gplxState").textContent=draft.gplxScanned?"Đã lưu tạm":"Không bắt buộc";$("#draftStatus").textContent=draft.cccdScanned||draft.gplxScanned?"Đang giữ 1 hồ sơ tạm":"Chưa có hồ sơ tạm";$("#scanCccd").classList.toggle("done",draft.cccdScanned);$("#scanGplx").classList.toggle("done",draft.gplxScanned);$("#saveSheet").disabled=!draft.cccdScanned}
 function normalizeAddressPart(value){
   return (value||"").trim().toLowerCase().replace(/đ/g,"d").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
     .replace(/^(xa|phuong|thi tran|huyen|quan|thi xa|thanh pho|tinh|tp|q|h|tx|tt|p|x|t)\.?\s+/,"").replace(/\s+/g," ").trim();
@@ -54,18 +55,32 @@ async function parseCccd(raw){
   return{SoCMT:p[0],HoVaTen:p[2],NgaySinh:formatDate(p[3]),GioiTinh:p[4],ChiTiet_TT:address.detail,MaDVHC_TT:address.code,ChiTiet_CT:address.detail,MaDVHC_CT:address.code,NgayCapCMT:formatDate(p[6]||""),NoiCapCMT:"Cục Cảnh sát QLHC về TTXH"};
 }
 function parseGplx(raw){
-  const p=raw.split(/[|;]/).map(x=>x.trim()).filter(Boolean);
-  if(raw.includes(";")&&p.length>=6&&/^\d{10,12}$/.test(onlyDigits(p[0]))&&/^\d{8}$/.test(onlyDigits(p[2]))){
-    const hangs=[...new Set([...p[3].matchAll(/(?:^|[^A-Z0-9])(A1|A2|A3|A4|B1|B2|B|C1|C|D1|D2|D|BE|CE|DE|FB2|FC|FD|FE)(?=$|[^A-Z0-9])/gi)].map(x=>x[1].toUpperCase()))];
-    return{SoGPLXDaCo:onlyDigits(p[0]),HangGPLXDaCo:hangs.join("|"),NgayTTGPLXDaCo:"",NgayCapGPLXDaCo:toYmd(p[4]),DVCapGPLXDaCo:p[6]||""};
+  const cleanRaw=raw.replace(/https?:\/\/\S+/gi,"").trim().replace(/[;\s]+$/,"");
+  const p=cleanRaw.split(/[|;]/).map(x=>x.trim()).filter(Boolean);
+  if(cleanRaw.includes(";")&&p.length>=6&&/^\d{10,12}$/.test(onlyDigits(p[0]))&&/^\d{8}$/.test(onlyDigits(p[2]))){
+    const hangs=[...new Set([...p[3].matchAll(/(?:^|[^A-Z0-9])(A1|A2|A3|A4|A|B1|B2|B|C1|C|D1|D2|D|BE|CE|DE|FB2|FC|FD|FE)(?=$|[^A-Z0-9])/gi)].map(x=>x[1].toUpperCase()))];
+    const count=Math.max(1,hangs.length),repeat=value=>Array(count).fill(value).join("|");
+    const issuer=p[6]||"",issuerCode=DVQL_BY_ISSUER[normalizeAddressPart(issuer)]||issuer;
+    return{SoGPLXDaCo:onlyDigits(p[0]),HangGPLXDaCo:hangs.join("|"),NgayTTGPLXDaCo:"",NgayCapGPLXDaCo:repeat(toYmd(p[4])),DVCapGPLXDaCo:repeat(issuerCode)};
   }
   const birthYmd=toYmd(draft.record.NgaySinh);
   const issueDates=p.map(onlyDigits).filter(x=>/^\d{8}$/.test(x)).map(toYmd).filter(x=>x&&x!==birthYmd);
-  const hangs=[...new Set([...raw.matchAll(/(?:^|[^A-Z0-9])(A1|A2|A3|A4|B1|B2|B|C1|C|D1|D2|D|BE|CE|DE|FB2|FC|FD|FE)(?=$|[^A-Z0-9])/gi)].map(x=>x[1].toUpperCase()))];
+  const hangs=[...new Set([...cleanRaw.matchAll(/(?:^|[^A-Z0-9])(A1|A2|A3|A4|A|B1|B2|B|C1|C|D1|D2|D|BE|CE|DE|FB2|FC|FD|FE)(?=$|[^A-Z0-9])/gi)].map(x=>x[1].toUpperCase()))];
   const candidates=p.map(onlyDigits).filter(x=>x.length>=10&&x.length<=12&&!/^\d{8}$/.test(x)&&x!==onlyDigits(draft.record.SoCMT));
   return{SoGPLXDaCo:candidates.join("|"),HangGPLXDaCo:hangs.join("|"),NgayTTGPLXDaCo:"",NgayCapGPLXDaCo:issueDates[0]||"",DVCapGPLXDaCo:""};
 }
 function appendPipe(oldValue,newValue){return newValue?(oldValue?oldValue+"|"+newValue:newValue):oldValue}
+const pipeValues=value=>(value||"").split("|").map(x=>x.trim()).filter(Boolean);
+function isValidYmd(value){if(!/^\d{8}$/.test(value))return false;const y=+value.slice(0,4),m=+value.slice(4,6),d=+value.slice(6,8),date=new Date(Date.UTC(y,m-1,d));return date.getUTCFullYear()===y&&date.getUTCMonth()===m-1&&date.getUTCDate()===d}
+function validateRecord(){
+  if(!draft.cccdScanned)return"Phải quét CCCD trước khi lưu.";
+  const hangs=pipeValues(draft.record.HangGPLXDaCo),hasGplx=draft.gplxScanned||pipeValues(draft.record.SoGPLXDaCo).length||hangs.length;
+  if(!hasGplx)return"";
+  if(!hangs.length)return"GPLX đã có nhưng chưa xác định được hạng.";
+  const dates=pipeValues(draft.record.NgayTTGPLXDaCo);
+  if(dates.length!==hangs.length||dates.some(x=>!isValidYmd(x)))return`Ngày trúng tuyển phải có ${hangs.length} giá trị dạng yyyyMMdd, ngăn bằng dấu |.`;
+  return"";
+}
 async function finish(raw){
   try{
     navigator.vibrate?.(120);
@@ -153,7 +168,7 @@ $("#toggleFlash").onclick=async()=>{const track=scanStream?.getVideoTracks?.()[0
 $("#imageInput").onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const bitmap=await createImageBitmap(file);if(nativeDetector){const found=await nativeDetector.detect(bitmap).catch(()=>[]);if(found?.[0]?.rawValue){finish(found[0].rawValue);e.target.value="";return}}const max=2200,scale=Math.min(1,max/bitmap.width);scanCanvas.width=Math.round(bitmap.width*scale);scanCanvas.height=Math.round(bitmap.height*scale);scanCtx.drawImage(bitmap,0,0,scanCanvas.width,scanCanvas.height);let image=scanCtx.getImageData(0,0,scanCanvas.width,scanCanvas.height),r=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});if(!r?.data){for(let i=0;i<image.data.length;i+=4){const y=.299*image.data[i]+.587*image.data[i+1]+.114*image.data[i+2],v=y<145?0:255;image.data[i]=image.data[i+1]=image.data[i+2]=v}r=jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"})}if(!r?.data)throw Error();finish(r.data)}catch{show("Không tìm thấy QR. Hãy chụp thẳng, đủ sáng và để QR chiếm ít nhất 1/3 ảnh.","error")}e.target.value=""};
 form.oninput=e=>{if(e.target.name){draft.record[e.target.name]=e.target.value;saveDraft()}};
 $("#clearDraft").onclick=()=>{if(confirm("Xóa toàn bộ hồ sơ đang giữ tạm?")){draft={record:emptyRecord(),cccdScanned:false,gplxScanned:false};localStorage.removeItem("hoso-nhap");render()}};
-$("#saveSheet").onclick=async()=>{if(!GOOGLE_SCRIPT_URL)return show("Chưa cấu hình GOOGLE_SCRIPT_URL trong config.js.","error");$("#saveSheet").disabled=true;show("Đang ghi Google Sheets...");const payload={...draft.record,ClientRecordId:crypto.randomUUID(),CreatedAt:new Date().toISOString()};try{await fetch(GOOGLE_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});localStorage.removeItem("hoso-nhap");draft={record:emptyRecord(),cccdScanned:false,gplxScanned:false};render();show("Đã gửi bản ghi. Kiểm tra Google Sheets để xác nhận.","ok")}catch{show("Không gửi được. Hồ sơ tạm vẫn được giữ lại.","error");$("#saveSheet").disabled=false}};
+$("#saveSheet").onclick=async()=>{if(!GOOGLE_SCRIPT_URL)return show("Chưa cấu hình GOOGLE_SCRIPT_URL trong config.js.","error");const validationError=validateRecord();if(validationError)return show(validationError,"error");$("#saveSheet").disabled=true;show("Đang ghi Google Sheets...");const payload={...draft.record,NoiCapCMT:"00",ClientRecordId:crypto.randomUUID(),CreatedAt:new Date().toISOString()};try{await fetch(GOOGLE_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});localStorage.removeItem("hoso-nhap");draft={record:emptyRecord(),cccdScanned:false,gplxScanned:false};render();show("Đã gửi bản ghi. Kiểm tra Google Sheets để xác nhận.","ok")}catch{show("Không gửi được. Hồ sơ tạm vẫn được giữ lại.","error");$("#saveSheet").disabled=false}};
 render();
 
 function installAddressTester(){
