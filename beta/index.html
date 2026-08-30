@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#075f4b">
   <title>BETA Quét CCCD & GPLX</title>
-  <link rel="stylesheet" href="./styles.css?beta=1">
+  <link rel="stylesheet" href="./styles.css?beta=4">
 </head>
 <body>
   <header><b>HỒ SƠ SỐ · BETA QR</b><span id="draftStatus">Chưa có hồ sơ tạm</span></header>
@@ -20,7 +20,7 @@
       <div class="card-title"><div><small>CAMERA SAU</small><h2 id="cameraTitle">Quét QR CCCD</h2></div><button id="closeCamera" class="icon">×</button></div>
       <div class="camera-box"><video id="camera" playsinline muted></video><div class="target"><span>ĐẶT TOÀN BỘ MÃ QR VÀO KHUNG</span></div><div class="scan-line"></div></div>
       <p id="cameraHint">Giữ cách QR khoảng 15–25 cm và chờ camera lấy nét.</p>
-      <div id="qrCameraActions" class="camera-actions beta-actions"><button id="toggleFlash" class="secondary" type="button">Bật đèn</button><button id="cycleZoom" class="secondary" type="button">Zoom 1×</button><label class="secondary">Chọn ảnh QR<input id="imageInput" type="file" accept="image/*" capture="environment" hidden></label></div>
+      <div id="qrCameraActions" class="camera-actions beta-actions"><button id="toggleFlash" class="secondary" type="button">Bật đèn</button><button id="cycleZoom" class="secondary" type="button">Zoom 1×</button><label class="secondary">Chọn ảnh có sẵn<input id="imageInput" type="file" accept="image/*" hidden></label><label class="secondary">Chụp ảnh QR<input id="cameraImageInput" type="file" accept="image/*" capture="environment" hidden></label></div>
       <div id="photoCameraActions" class="camera-actions one hidden"><button id="capturePhoto" class="capture" type="button">Chụp ảnh</button></div>
     </section>
 
@@ -69,6 +69,6 @@
       <p id="message"></p>
     </section>
   </main>
-  <script type="module" src="./app.js?beta=3"></script>
+  <script type="module" src="./app.js?beta=4"></script>
 </body>
 </html>
