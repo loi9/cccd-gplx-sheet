@@ -41,6 +41,7 @@
           <label>Chi tiết cư trú<input name="ChiTiet_CT"></label>
         </div></fieldset>
         <fieldset><legend>Khóa học</legend><div class="grid">
+          <label class="full">Sales<input name="Sales" list="salesList" autocomplete="off" placeholder="Bấm để chọn hoặc gõ tên Sales"><datalist id="salesList"></datalist></label>
           <label>Hạng học<select id="hangHoc"><option value="">-- Chọn hạng --</option><option>A</option><option>A1</option><option>B</option><option>C1</option><option>C</option><option>D1</option><option>D2</option><option>D</option><option>BE</option><option>CE</option><option>DE</option></select></label>
           <label>Khóa<input id="khoaHoc" placeholder="Ví dụ: K42"></label>
           <label class="full">Mã khóa học<input name="MaKhoaHoc" readonly placeholder="Tự ghép, ví dụ B-K42"></label>
@@ -68,6 +69,6 @@
       <p id="message"></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=12"></script>
+  <script type="module" src="./app.js?v=13"></script>
 </body>
 </html>

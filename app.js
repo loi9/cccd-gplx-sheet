@@ -1,8 +1,9 @@
 import jsQR from "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/+esm";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 import { GOOGLE_SCRIPT_URL } from "./config.js";
+import { SALES_LIST } from "./sales.js?v=13";
 
-const FIELDS=["HoVaTen","NgaySinh","GioiTinh","SoCMT","NgayCapCMT","NoiCapCMT","MaDVHC_TT","ChiTiet_TT","MaDVHC_CT","ChiTiet_CT","SoGPLXDaCo","HangGPLXDaCo","NgayTTGPLXDaCo","NgayCapGPLXDaCo","DVCapGPLXDaCo","GhiChu","MaKhoaHoc","DiaChiGoc","DiaChiMoi"];
+const FIELDS=["HoVaTen","NgaySinh","GioiTinh","SoCMT","NgayCapCMT","NoiCapCMT","MaDVHC_TT","ChiTiet_TT","MaDVHC_CT","ChiTiet_CT","SoGPLXDaCo","HangGPLXDaCo","NgayTTGPLXDaCo","NgayCapGPLXDaCo","DVCapGPLXDaCo","GhiChu","MaKhoaHoc","DiaChiGoc","DiaChiMoi","Sales"];
 const emptyRecord=()=>Object.fromEntries(FIELDS.map(x=>[x,""]));
 let draft=JSON.parse(localStorage.getItem("hoso-nhap")||"null")||{record:emptyRecord(),cccdScanned:false,gplxScanned:false};
 draft.record={...emptyRecord(),...(draft.record||{})};draft.course=draft.course||{hang:"",khoa:""};draft.photos=draft.photos||{};
@@ -14,6 +15,9 @@ const DVQL_BY_ISSUER={"an giang":"91","ba ria - vung tau":"79","bac giang":"24",
 let addressWarning="";
 const form=document.querySelector("#recordForm"),video=document.querySelector("#camera"),panel=document.querySelector("#cameraPanel");
 const $=s=>document.querySelector(s);
+function fillSalesList(names){const list=$("#salesList");list.innerHTML="";[...new Set(names.map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"vi")).forEach(name=>{const option=document.createElement("option");option.value=name;list.appendChild(option)})}
+async function loadSalesList(){let names=SALES_LIST;try{if(GOOGLE_SCRIPT_URL){const url=new URL(GOOGLE_SCRIPT_URL);url.searchParams.set("action","sales");const response=await fetch(url,{cache:"no-store"}),data=await response.json();if(Array.isArray(data.sales))names=data.sales}}catch{}fillSalesList(names)}
+loadSalesList();
 const formatDate=v=>/^\d{8}$/.test(v)?`${v.slice(0,2)}/${v.slice(2,4)}/${v.slice(4)}`:v;
 const onlyDigits=v=>(v||"").replace(/\D/g,"");
 function toYmd(value){
@@ -78,6 +82,7 @@ const pipeValues=value=>(value||"").split("|").map(x=>x.trim()).filter(Boolean);
 function isValidYmd(value){if(!/^\d{8}$/.test(value))return false;const y=+value.slice(0,4),m=+value.slice(4,6),d=+value.slice(6,8),date=new Date(Date.UTC(y,m-1,d));return date.getUTCFullYear()===y&&date.getUTCMonth()===m-1&&date.getUTCDate()===d}
 function validateRecord(){
   if(!draft.cccdScanned)return"Phải quét CCCD trước khi lưu.";
+  if(!draft.record.Sales.trim())return"Phải chọn hoặc nhập Sales trước khi lưu.";
   if(!draft.course.hang||!draft.course.khoa)return"Phải chọn Hạng học và nhập Khóa trước khi lưu.";
   const hangs=pipeValues(draft.record.HangGPLXDaCo),hasGplx=draft.gplxScanned||pipeValues(draft.record.SoGPLXDaCo).length||hangs.length;
   if(!hasGplx)return"";
