@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#075f4b">
   <title>Quét CCCD & GPLX</title>
-  <link rel="stylesheet" href="./styles.css?v=11">
+  <link rel="stylesheet" href="./styles.css?v=12">
 </head>
 <body>
   <header><b>HỒ SƠ SỐ</b><span id="draftStatus">Chưa có hồ sơ tạm</span></header>
@@ -56,17 +56,18 @@
         <fieldset><legend>Ảnh hồ sơ — không gửi lên Google Sheets</legend>
           <p class="photo-help">Mỗi nút chụp mặt trước trước, sau đó tự chuyển sang mặt sau. Khi lưu sẽ tải một file ZIP về máy.</p>
           <div class="photo-grid">
-            <button type="button" class="photo-button" data-photo-slot="cccd"><b>CCCD</b><small>Chụp mặt trước</small></button>
-            <button type="button" class="photo-button" data-photo-slot="gplx1"><b>GPLX 1</b><small>Chụp mặt trước</small></button>
-            <button type="button" class="photo-button" data-photo-slot="gplx2"><b>GPLX 2</b><small>Chụp mặt trước</small></button>
-            <button type="button" class="photo-button" data-photo-slot="gplx3"><b>GPLX 3</b><small>Chụp mặt trước</small></button>
+            <button type="button" class="photo-button" data-photo-slot="cccd"><span class="photo-thumbs"><img data-side="front" alt="CCCD trước"><img data-side="back" alt="CCCD sau"></span><b>CCCD</b><small>Chụp mặt trước</small></button>
+            <button type="button" class="photo-button" data-photo-slot="gplx1"><span class="photo-thumbs"><img data-side="front" alt="GPLX 1 trước"><img data-side="back" alt="GPLX 1 sau"></span><b>GPLX 1</b><small>Chụp mặt trước</small></button>
+            <button type="button" class="photo-button" data-photo-slot="gplx2"><span class="photo-thumbs"><img data-side="front" alt="GPLX 2 trước"><img data-side="back" alt="GPLX 2 sau"></span><b>GPLX 2</b><small>Chụp mặt trước</small></button>
+            <button type="button" class="photo-button" data-photo-slot="gplx3"><span class="photo-thumbs"><img data-side="front" alt="GPLX 3 trước"><img data-side="back" alt="GPLX 3 sau"></span><b>GPLX 3</b><small>Chụp mặt trước</small></button>
           </div>
+          <button type="button" id="downloadZipOnly" class="zip-button">Tải ZIP ảnh về máy</button>
         </fieldset>
       </form>
       <div class="actions"><button id="clearDraft" class="danger">Xóa hồ sơ tạm</button><button id="saveSheet" class="primary" disabled>Xác nhận và lưu Google Sheets</button></div>
       <p id="message"></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=11"></script>
+  <script type="module" src="./app.js?v=12"></script>
 </body>
 </html>
